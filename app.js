@@ -73,7 +73,7 @@ wppconnect
   .create({
     phoneNumber: '5577991829075',
     catchLinkCode: (str) => console.log('Code: ' + str),
-    browserArgs: ['--no-sandbox'],
+    browserArgs: ['--no-sandbox', '--disable-dev-shm-usage',],
     puppeteerOptions: { timeout: 60000 }
   })
   .then((cl) => {
