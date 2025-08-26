@@ -1,0 +1,25 @@
+version: '3.9'
+services:
+  postgresDB:
+    image: postgres
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: docker
+    ports:
+      - "15151:5432"      
+  evolution-api:
+    container_name: evolution_api_teste
+    image: atendai/evolution-api:v2.1.1
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - evolution_instances:/evolution/instances
+    links:
+      - postgresDB:postgresDB      
+
+volumes:
+  evolution_instances:
