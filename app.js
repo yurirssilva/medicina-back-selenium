@@ -84,7 +84,7 @@ wppconnect
         return res.status(404).json({ erro: 'Usuário não encontrado' });
       }
       const paciente = resultado.rows[0]
-      // console.log(paciente)
+      console.log(paciente)
 
       // const dataPreventivo = new Date(paciente.preventivo); // Ex: 2025-07-23
       // const dataPreventivoAnual = new Date(dataPreventivo);
