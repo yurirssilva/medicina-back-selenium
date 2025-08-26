@@ -21,17 +21,18 @@ function formatarData(date) {
   return `${dia}/${mes}/${ano}`;
 }
 
-wppconnect
-  .create({
-    phoneNumber: '5577991008357',
-    catchLinkCode: (str) => console.log('Code:: ' + str),
-    browserArgs: ['--no-sandbox']
-  })
-  .then((cl) => {
-    client = cl;
-    app.post('/send/:id', async (req, res) => {
-      const { id } = req.params;
-      const resultado = await pool.query('SELECT * FROM pacientes WHERE uuid = $1', [id]);
+function start(client) {
+  client.onMessage(async (message) => {
+    if (message.body === '1') {
+      const rawNumber = message.from; // ex: "5511999999999@c.us"
+      const phoneNumber = rawNumber.replace('@c.us', ''); // "5511999999999"
+
+      console.log('Número puro:', phoneNumber);
+
+      // Se quiser sem o DDI (55), pega só a partir do DDD:
+      const numberWithoutDDI = phoneNumber.substring(2); // "119999999999"
+
+      const resultado = await pool.query('SELECT * FROM pacientes WHERE telefone = $1', [numberWithoutDDI]);
       if (resultado.rowCount === 0) {
         return res.status(404).json({ erro: 'Usuário não encontrado' });
       }
@@ -44,14 +45,69 @@ wppconnect
       const dataPreventivosSemestral = new Date(dataPreventivo);
       dataPreventivosSemestral.setMonth(dataPreventivosSemestral.getMonth() + 6);
 
-      const message = `Olá ${paciente.nome}. Essa é uma mensagem da USF Vila América. Seu último preventivo foi realizado no dia ${ formatarData(dataPreventivo)} e o resultado foi ${paciente.risco ? 'alterado': 'normal'}, seu retorno está previsto para ${paciente.risco ? formatarData(dataPreventivosSemestral) : formatarData(dataPreventivoAnual)}`
-      try {
-        console.log('sendText')
-        const result = await client.sendText(`55${paciente.telefone}@c.us`, message);
-        return res.json({ status: "success", result });
-      } catch (error) {
-        return res.status(500).json({ status: "error", error: error.message });
+      const messageText = `Olá ${paciente.nome}. Essa mensagem é da USF VILA AMÉRICA. Viemos comunicar que seu último preventivo foi realizado no dia ${formatarData(dataPreventivo)} e o resultado foi ${paciente.risco ? 'alterado' : 'normal'}, seu retorno está previsto para ${paciente.risco ? formatarData(dataPreventivosSemestral) : formatarData(dataPreventivoAnual)}`
+      await client.sendText(`55${paciente.telefone}@c.us`, messageText);
+      // try {
+      //   console.log('sendText')
+      //   // const result = await client.sendCreatePoll(`55${paciente.telefone}@c.us`, 'É você?', ['Sim', 'Não']);
+      //   return res.json({ status: "success", result });
+      // } catch (error) {
+      //   return res.status(500).json({ status: "error", error: error.message });
+      // }
+
+      // client
+      //   .sendText(message.from, 'Hello, how I may help you?')
+      //   .then((result) => {
+      //     console.log('Result: ', result); //return object success
+      //   })
+      //   .catch((erro) => {
+      //     console.error('Error when sending: ', erro); //return object error
+      //   });
+    } else if (message.body === '2') {
+      await client.sendText( message.from, 'Agradecemos pelo contato. Desculpe o incômodo!');
+    }
+  });
+}
+
+wppconnect
+  .create({
+    phoneNumber: '5577991829075',
+    catchLinkCode: (str) => console.log('Code: ' + str),
+    browserArgs: ['--no-sandbox']
+  })
+  .then((cl) => {
+    client = cl;
+    app.post('/send/:id', async (req, res) => {
+      const { id } = req.params;
+      const resultado = await pool.query('SELECT * FROM pacientes WHERE uuid = $1', [id]);
+      if (resultado.rowCount === 0) {
+        return res.status(404).json({ erro: 'Usuário não encontrado' });
       }
+      const paciente = resultado.rows[0]
+      // console.log(paciente)
+
+      // const dataPreventivo = new Date(paciente.preventivo); // Ex: 2025-07-23
+      // const dataPreventivoAnual = new Date(dataPreventivo);
+      // dataPreventivoAnual.setFullYear(dataPreventivoAnual.getFullYear() + 1);
+      // const dataPreventivosSemestral = new Date(dataPreventivo);
+      // dataPreventivosSemestral.setMonth(dataPreventivosSemestral.getMonth() + 6);
+
+      const message = `Olá ${paciente.nome}, tudo bem? Aqui é da USF VILA AMERICA. Estamos entrando em contato para falar sobre os resultados do seu preventivo. Vamos primeiro confirmar alguns dados ok?`
+      await client.sendText(`55${paciente.telefone}@c.us`, message);
+      const message2 = `Você é ${paciente.nome} e seu CPF é ${paciente.cpf}?  Responda \n1- Sim \n2- Não`
+      await client.sendText(`55${paciente.telefone}@c.us`, message2);
+      // const message = `Olá ${paciente.nome}. É você? Responda \n1- Sim \n2- Não`
+      // const message = `Olá ${paciente.nome}. Seu último preventivo foi realizado no dia ${formatarData(dataPreventivo)} e o resultado foi ${paciente.risco ? 'alterado' : 'normal'}, seu retorno está previsto para ${paciente.risco ? formatarData(dataPreventivosSemestral) : formatarData(dataPreventivoAnual)}`
+
+      start(client)
+      
+      return res.json({ status: "success" });
+      // try {
+      //   console.log('sendText')
+      //   const result = await client.sendText(`55${paciente.telefone}@c.us`, message);
+      // } catch (error) {
+      //   return res.status(500).json({ status: "error", error: error.message });
+      // }
 
     })
   }).catch((error) => console.log(error));
